@@ -1,0 +1,4 @@
+# API_challenge
+a challenged issued to me to build an api in node.js for a company interview.
+
+After cloning repo, make sure to run npm install.
