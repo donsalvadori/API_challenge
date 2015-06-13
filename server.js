@@ -34,19 +34,29 @@ app.use(morgan('dev'));
 
 	  // create a sample user
 	  var chris = new User({ 
-	    name: 'Chris Salvi', 
+	    name: 'Chris Salvi',
+	    _id: 0,
+	    age: 13, 
 	    password: 'password',
 	    admin: true 
 	  });
 
-	  // save the sample user
-	  chris.save(function(err) {
-	    if (err) throw err;
+	  chris.save(function(err){
+	  	if(err) return handleError(err);
 
-	    console.log('User saved successfully');
-	    res.json({ success: true });
+	  	var group1 = new Group({
+	  		name: 'myspace',
+	  		_creator: chris._id
+	  	});
+
+	  	group1.save(function(err) {
+	  		if (err) return handleError(err);
+	  	});
 	  });
-	});
+	 });
+
+	
+
 
 // API ROUTES -------------------
 // get an instance of the router for api routes
@@ -141,6 +151,8 @@ apiRoutes.use(function(req, res, next) {
 
 
 	// create a user (accessed at POST http://localhost:8080/api/users)
+    apiRoutes.route('/users')
+
     .post(function(req, res) {
         
         var user = new User();      // create a new instance of the User model
@@ -162,7 +174,7 @@ apiRoutes.use(function(req, res, next) {
 
     // get the user with that id (accessed at GET http://localhost:8080/api/users/:user_id)
     .get(function(req, res) {
-        Uer.findById(req.params.user_id, function(err, user) {
+        User.findById(req.params.user_id, function(err, user) {
             if (err)
                 res.send(err);
             res.json(user);
@@ -170,10 +182,12 @@ apiRoutes.use(function(req, res, next) {
     });
 
 // update the user with this id (accessed at PUT http://localhost:8080/api/users/:user_id)
+    apiRoutes.route('/users/:user_id')
+
     .put(function(req, res) {
 
         // use our User model to find the user we want
-        User.findById(req.params.bear_id, function(err, user) {
+        User.findById(req.params.user_id, function(err, user) {
 
             if (err)
                 res.send(err);
@@ -191,9 +205,11 @@ apiRoutes.use(function(req, res, next) {
     });
 
 // delete the user with this id (accessed at DELETE http://localhost:8080/api/users/:user_id)
+    apiRoutes.route('/users/:user_id')
+
     .delete(function(req, res) {
         User.remove({
-            _id: req.params.bear_id
+            _id: req.params.user_id
         }, function(err, user) {
             if (err)
                 res.send(err);
@@ -204,6 +220,105 @@ apiRoutes.use(function(req, res, next) {
 
 // apply the routes to our application with the prefix /api
 app.use('/api', apiRoutes);
+
+
+
+
+//---------GROUP Routes--------------------------------//
+
+
+// route to return all groups (GET http://localhost:8080/api/groups)
+	
+	apiRoutes.route('/groups')
+
+	.get('/groups', function(req, res) {
+	  Group.find({}, function(err, groups) {
+	    if (err)
+            res.send(err);
+
+	    res.json(groups);
+	  });
+	});   
+
+// create a group (accessed at POST http://localhost:8080/api/group)
+    
+    apiRoutes.route('/groups')
+
+    .post(function(req, res) {
+        
+        var group = new Group();      // create a new instance of the Group model
+        group.name = req.body.name;  // set the group name (comes from the request)
+
+        // save the group and check for errors
+        group.save(function(err) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Group created!' });
+        });
+    });
+
+
+// on routes that end in /groups/:group_id
+// ----------------------------------------------------
+	
+	apiRoutes.route('/groups/:group_id')
+
+    // get the group with that id (accessed at GET http://localhost:8080/api/groups/:group_id)
+    .get(function(req, res) {
+        Group.findById(req.params.group_id, function(err, group) {
+            if (err)
+                res.send(err);
+            res.json(group);
+        });
+    });
+
+// update the group with this id (accessed at PUT http://localhost:8080/api//groups/:group_id)
+    
+    apiRoutes.route('/groups/:group_id')
+    .put(function(req, res) {
+
+        // use our Group model to find the group we want
+        Group.findById(req.params.group_id, function(err, group) {
+
+            if (err)
+                res.send(err);
+
+            group.name = req.body.name;  // update the group info
+
+            // save the group
+            group.save(function(err) {
+                if (err)
+                    res.send(err);
+
+                res.json({ message: 'Group updated!' });
+            });
+        });
+    });
+
+// delete the user with this id (accessed at DELETE http://localhost:8080/api/groups/:group_id)
+    apiRoutes.route('/groups/:group_id')
+
+    .delete(function(req, res) {
+        Group.remove({
+            _id: req.params.group_id
+        }, function(err, user) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'Successfully deleted' });
+        });
+    });
+
+ //    apiRoutes.route('/groups/:group_id')
+	// .update({ _id: group._id }, { $pull : { users : user._id }})
+
+	// apiRoutes.route('/groups/:group_id')
+	
+	// .put(function(req, res) {
+	// { _id: group._id }
+	// { $pull : { users : user._id }
+ //    res.json({ message: 'Update the book' });
 
 // =======================
 // start the server ======
