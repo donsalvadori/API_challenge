@@ -1,128 +1,114 @@
-// server.js
+// ========================
+// get the packages we need 
+// ========================
+var express     = require('express');
+var app         = express();
+var bodyParser  = require('body-parser');
+var morgan      = require('morgan');
+var mongoose    = require('mongoose');
 
-// BASE SETUP
-// =============================================================================
+var jwt    = require('jsonwebtoken'); // used to create, sign, and verify tokens
+var config = require('./config'); // get our config file
+var User   = require('../nodejs1/models/user'); // get our mongoose model
+    
+// =======================
+// configuration =========
+// =======================
+var port = process.env.PORT || 8080; // used to create, sign, and verify tokens
+mongoose.connect(config.database); // connect to database
+app.set('superSecret', config.secret); // secret variable
 
-// call the packages we need
-var express    = require('express');        // call express
-var app        = express();                 // define our app using express
-var bodyParser = require('body-parser');
-
-// configure app to use bodyParser()
-// this will let us get the data from a POST
-app.use(bodyParser.urlencoded({ extended: true }));
+// use body parser so we can get info from POST and/or URL parameters
+app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-var mongoose   = require('mongoose');
-mongoose.connect('mongodb://node:node@novus.modulusmongo.net:27017/Iganiq8o'); // connect to our database
+// use morgan to log requests to the console
+app.use(morgan('dev'));
 
-var port = process.env.PORT || 8080; // set our port
+// =======================
+// routes ================
+// =======================
+// basic route
 
-var User = require('../nodejs1/models/user')
+	app.get('/setup', function(req, res) {
 
-// ROUTES FOR OUR API
-// =============================================================================
-var router = express.Router();              // get an instance of the express Router
+	  // create a sample user
+	  var chris = new User({ 
+	    name: 'Chris Salvi', 
+	    password: 'password',
+	    admin: true 
+	  });
 
+	  // save the sample user
+	  chris.save(function(err) {
+	    if (err) throw err;
 
-// middleware to use for all requests
-router.use(function(req, res, next) {
-    // do logging
-    console.log('Something is happening.');
-    next(); // make sure we go to the next routes and don't stop here
+	    console.log('User saved successfully');
+	    res.json({ success: true });
+	  });
+	});
+
+// API ROUTES -------------------
+// get an instance of the router for api routes
+
+	var apiRoutes = express.Router(); 
+
+// route to authenticate a user (POST http://localhost:8080/api/authenticate)
+apiRoutes.post('/authenticate', function(req, res) {
+
+  // find the user
+  User.findOne({
+    name: req.body.name
+  }, function(err, user) {
+
+    if (err) throw err;
+
+    if (!user) {
+      res.json({ success: false, message: 'Authentication failed. User not found.' });
+    } else if (user) {
+
+      // check if password matches
+      if (user.password != req.body.password) {
+        res.json({ success: false, message: 'Authentication failed. Wrong password.' });
+      } else {
+
+        // if user is found and password is right
+        // create a token
+        var token = jwt.sign(user, app.get('superSecret'), {
+          expiresInMinutes: 1440 // expires in 24 hours
+        });
+
+        // return the information including token as JSON
+        res.json({
+          success: true,
+          message: 'Enjoy your token!',
+          token: token
+        });
+      }   
+    }
+  });
 });
 
-// on routes that end in /users
-// ----------------------------------------------------
-router.route('/users')
+// TODO: route middleware to verify a token
 
-    // create a user (accessed at POST http://localhost:8080/api/users)
-    .post(function(req, res) {
-        
-        var user = new User();      // create a new instance of the User model
-        user.name = req.body.name;  // set the user name (comes from the request)
+// route to show a random message (GET http://localhost:8080/api/)
+	apiRoutes.get('/', function(req, res) {
+	  res.json({ message: 'Welcome to the coolest API on earth!' });
+	});
 
-        // save the user and check for errors
-        user.save(function(err) {
-            if (err)
-                res.send(err);
+// route to return all users (GET http://localhost:8080/api/users)
+	apiRoutes.get('/users', function(req, res) {
+	  User.find({}, function(err, users) {
+	    res.json(users);
+	  });
+	});   
 
-            res.json({ message: 'User created!' });
-        });
-    });
+// apply the routes to our application with the prefix /api
+app.use('/api', apiRoutes);
 
-     // GET all the users (accessed at GET http://localhost:8080/api/users)
-    .get(function(req, res) {
-        User.find(function(err, users) {
-            if (err)
-                res.send(err);
+// =======================
+// start the server ======
+// =======================
 
-            res.json(users);
-        });
-    });
-
-// on routes that end in /users/:user_id
-// ----------------------------------------------------
-router.route('/users/:user_id')
-
-    // get the user with that id (accessed at GET http://localhost:8080/api/users/:user_id)
-    .get(function(req, res) {
-        User.findById(req.params.bear_id, function(err, user) {
-            if (err)
-                res.send(err);
-            res.json(user);
-        });
-    });
-
-
-  	// update the user with this id (accessed at PUT http://localhost:8080/api/users/:user_id)
-	.put(function(req, res) {
-
-    // use our user model to find the user we want
-    User.findById(req.params.bear_id, function(err, user) {
-
-        if (err)
-            res.send(err);
-
-        user.name = req.body.name;  // update the bears info
-
-        // save the user
-        user.save(function(err) {
-            if (err)
-                res.send(err);
-
-            res.json({ message: 'User updated!' });
-        });
-    });
-});
-
-	// delete the user with this id (accessed at DELETE http://localhost:8080/api/users/:user_id)
-    .delete(function(req, res) {
-        User.remove({
-            _id: req.params.user_id
-        }, function(err, user) {
-            if (err)
-                res.send(err);
-
-            res.json({ message: 'User successfully deleted' });
-        });
-    });
-
-
-// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
-router.get('/', function(req, res) {
-    res.json({ message: 'hooray! welcome to our api!' });   
-});
-
-
-// REGISTER OUR ROUTES -------------------------------
-// all of our routes will be prefixed with /api
-app.use('/api', router);
-
-// more routes for our API will happen here
-
-
-// START THE SERVER
-// =============================================================================
-app.listen(port);
-console.log('Magic happens on port ' + port);
+	app.listen(port);
+	console.log('Magic happens at http://localhost:' + port);
