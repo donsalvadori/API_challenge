@@ -310,15 +310,6 @@ app.use('/api', apiRoutes);
         });
     });
 
- //    apiRoutes.route('/groups/:group_id')
-	// .update({ _id: group._id }, { $pull : { users : user._id }})
-
-	// apiRoutes.route('/groups/:group_id')
-	
-	// .put(function(req, res) {
-	// { _id: group._id }
-	// { $pull : { users : user._id }
- //    res.json({ message: 'Update the book' });
 
 // =======================
 // start the server ======
